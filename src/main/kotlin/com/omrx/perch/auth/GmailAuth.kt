@@ -1,0 +1,52 @@
+package com.omrx.perch.auth
+
+import com.google.api.client.auth.oauth2.Credential
+import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp
+import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver
+import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow
+import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
+import com.google.api.client.http.GenericUrl
+import com.google.api.client.http.HttpTransport
+import com.google.api.client.json.JsonObjectParser
+import com.google.api.client.json.gson.GsonFactory
+import com.google.api.client.util.store.FileDataStoreFactory
+import java.io.File
+import java.io.InputStreamReader
+
+private val SCOPES = listOf(
+    "https://mail.google.com/",
+    "https://www.googleapis.com/auth/userinfo.email"
+)
+private val JSON_FACTORY = GsonFactory.getDefaultInstance()
+private val TOKENS_DIR = File(System.getProperty("user.home"), ".perch/tokens")
+
+fun getGmailCredential(): Credential {
+    val httpTransport = GoogleNetHttpTransport.newTrustedTransport()
+    val secretsStream = object {}.javaClass.getResourceAsStream("/credentials.json")
+        ?: error("Missing credentials.json in resources")
+    val clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, InputStreamReader(secretsStream))
+
+    val flow = GoogleAuthorizationCodeFlow.Builder(
+        httpTransport, JSON_FACTORY, clientSecrets, SCOPES
+    )
+        .setDataStoreFactory(FileDataStoreFactory(TOKENS_DIR))
+        .setAccessType("offline")
+        .build()
+
+    return AuthorizationCodeInstalledApp(flow, LocalServerReceiver()).authorize("user")
+}
+
+fun getUserEmail(credential: Credential): String {
+    val transport: HttpTransport = GoogleNetHttpTransport.newTrustedTransport()
+    val requestFactory = transport.createRequestFactory(credential) // credential auto-attaches the auth header
+
+    val request = requestFactory.buildGetRequest(
+        GenericUrl("https://www.googleapis.com/oauth2/v2/userinfo")
+    )
+    request.parser = JsonObjectParser(JSON_FACTORY)
+
+    val response = request.execute()
+    val json = response.parseAs(Map::class.java)
+    return json["email"] as String
+}
