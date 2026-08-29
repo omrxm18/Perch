@@ -1,11 +1,13 @@
 package com.omrx.perch.ui.component
 
+import com.omrx.perch.config.AccountConfig
 import jakarta.mail.*
 import jakarta.mail.event.MessageCountAdapter
 import jakarta.mail.event.MessageCountEvent
 import org.eclipse.angus.mail.imap.IMAPFolder
 import java.util.Properties
 import java.io.ByteArrayOutputStream
+import kotlin.math.min
 
 data class MailSummary(
     val uid: Long,
@@ -23,41 +25,49 @@ sealed class MailContent {
 }
 
 class ImapWatcher(
-    private val host: String,
-    private val user: String,
+    private val accountConfig: AccountConfig,
     private val accessToken: String,
     private val onNewMail: (List<MailSummary>) -> Unit
 ) {
     private var store: Store? = null
     private var folder: IMAPFolder? = null
+    private var isRunning = false
 
     fun connect() {
         val props = Properties().apply {
             put("mail.store.protocol", "imaps")
-            put("mail.imaps.host", "imap.gmail.com")
-            put("mail.imaps.port", "993")
+            put("mail.imaps.host", accountConfig.imapHost)
+            put("mail.imaps.port", accountConfig.imapPort.toString())
             put("mail.imaps.auth.mechanisms", "XOAUTH2")
+            put("mail.imaps.ssl.enable", "true")
+            put("mail.imaps.ssl.checkserveridentity", "true")
         }
         val session = Session.getInstance(props)
         store = session.getStore("imaps").apply {
-            connect(host, user, accessToken)
+            connect(accountConfig.imapHost, accountConfig.email, accessToken)
         }
         folder = (store!!.getFolder("INBOX") as IMAPFolder).apply {
             open(Folder.READ_WRITE)
         }
-        println("Connected. Total messages: ${folder!!.messageCount}")
+        println("Connected to ${accountConfig.imapHost}:${accountConfig.imapPort}. Total messages: ${folder!!.messageCount}")
     }
 
     fun fetchRecentSummaries(limit: Int = 50): List<MailSummary> {
         val f = folder ?: error("Call connect() first")
         val total = f.messageCount
-        val start = maxOf(1, total - limit + 1)
+        val start = maxOf(1, total - min(limit, 1000) + 1) // Cap at 1000 messages
         val messages = f.getMessages(start, total)
         return toSummaries(messages).reversed()
     }
 
     fun startIdleLoop() {
-        while (true) {
+        if (isRunning) return
+        isRunning = true
+        var retryCount = 0
+        val maxRetries = 5
+        val baseDelayMs = 2000L
+
+        while (isRunning && retryCount < maxRetries) {
             try {
                 val f = folder ?: error("Call connect() first")
                 f.addMessageCountListener(object : MessageCountAdapter() {
@@ -66,12 +76,41 @@ class ImapWatcher(
                         onNewMail(toSummaries(e.messages))
                     }
                 })
-                while (true) { f.idle() }
+                while (isRunning) {
+                    try {
+                        f.idle()
+                    } catch (e: FolderClosedException) {
+                        println("Folder closed, reconnecting...")
+                        break
+                    }
+                }
+                retryCount = 0 // Reset on successful connection
             } catch (e: Exception) {
-                println("IDLE dropped, reconnecting: ${e.message}")
-                Thread.sleep(2000)
-                connect()
+                retryCount++
+                val delay = baseDelayMs * (1L shl (retryCount - 1)) // Exponential backoff
+                println("IDLE error (retry $retryCount/$maxRetries): ${e.message}. Retrying in ${delay}ms...")
+                Thread.sleep(delay)
+                try {
+                    connect()
+                } catch (e: Exception) {
+                    println("Reconnect failed: ${e.message}")
+                }
             }
+        }
+        println("IDLE loop stopped after $maxRetries retries.")
+    }
+
+    fun stop() {
+        isRunning = false
+        try {
+            folder?.close(false)
+        } catch (e: Exception) {
+            println("Error closing folder: ${e.message}")
+        }
+        try {
+            store?.close()
+        } catch (e: Exception) {
+            println("Error closing store: ${e.message}")
         }
     }
 
@@ -105,7 +144,11 @@ class ImapWatcher(
     fun markAsRead(uid: Long) {
         val f = folder ?: return
         val message = f.getMessageByUID(uid) ?: return
-        f.setFlags(arrayOf(message), Flags(Flags.Flag.SEEN), true)
+        try {
+            f.setFlags(arrayOf(message), Flags(Flags.Flag.SEEN), true)
+        } catch (e: Exception) {
+            println("Error marking as read: ${e.message}")
+        }
     }
 
     private fun extractContent(part: Part, inlineImages: MutableMap<String, ByteArray>): MailContent? {
