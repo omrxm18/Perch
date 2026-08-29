@@ -65,8 +65,7 @@ fun main() {
 
                 )
                 val watcher = ImapWatcher(
-                    host = account.imapHost,
-                    user = account.email,
+                    accountConfig = account,
                     accessToken = credential.accessToken,
                     onNewMail = { newMessages -> mailList.addAll(0, newMessages) }
                 )

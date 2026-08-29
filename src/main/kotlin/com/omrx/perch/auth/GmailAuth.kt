@@ -13,6 +13,9 @@ import com.google.api.client.json.gson.GsonFactory
 import com.google.api.client.util.store.FileDataStoreFactory
 import java.io.File
 import java.io.InputStreamReader
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.nio.file.attribute.PosixFilePermissions
 
 private val SCOPES = listOf(
     "https://mail.google.com/",
@@ -33,6 +36,13 @@ fun getGmailCredential(): Credential {
         .setDataStoreFactory(FileDataStoreFactory(TOKENS_DIR))
         .setAccessType("offline")
         .build()
+
+    // Ensure the tokens directory has secure permissions
+    if (!TOKENS_DIR.exists()) {
+        TOKENS_DIR.mkdirs()
+        val perms = PosixFilePermissions.fromString("rwx------")
+        Files.setPosixFilePermissions(Paths.get(TOKENS_DIR.toURI()), perms)
+    }
 
     return AuthorizationCodeInstalledApp(flow, LocalServerReceiver()).authorize("user")
 }

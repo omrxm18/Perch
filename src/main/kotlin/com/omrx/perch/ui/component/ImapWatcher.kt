@@ -5,6 +5,7 @@ import jakarta.mail.*
 import jakarta.mail.event.MessageCountAdapter
 import jakarta.mail.event.MessageCountEvent
 import org.eclipse.angus.mail.imap.IMAPFolder
+import jakarta.mail.UIDFolder
 import java.util.Properties
 import java.io.ByteArrayOutputStream
 import kotlin.math.min
@@ -47,14 +48,17 @@ class ImapWatcher(
             connect(accountConfig.imapHost, accountConfig.email, accessToken)
         }
         folder = try {
-            (store!!.getFolder("INBOX") as IMAPFolder).apply {
-                if (!exists()) {
-                    error("INBOX folder does not exist")
-                }
-                open(Folder.READ_WRITE)
+            val inbox = store!!.getFolder("INBOX") as IMAPFolder
+            if (!inbox.exists()) {
+                error("INBOX folder does not exist")
             }
+            inbox.open(Folder.READ_WRITE)
+            inbox
         } catch (e: MessagingException) {
             println("Failed to open INBOX folder: ${e.message}")
+            throw e
+        } catch (e: ClassCastException) {
+            println("INBOX folder is not an IMAPFolder")
             throw e
         }
         println("Connected to ${accountConfig.imapHost}:${accountConfig.imapPort}. Total messages: ${folder!!.messageCount}")
@@ -106,6 +110,7 @@ class ImapWatcher(
             }
         }
         println("IDLE loop stopped after $maxRetries retries.")
+        isRunning = false // Ensure the loop stops completely
     }
 
     fun stop() {

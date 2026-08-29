@@ -14,3 +14,6 @@ build/
 .externalNativeBuild
 .cxx
 .aider*
+*.log
+*.diff
+*.patch

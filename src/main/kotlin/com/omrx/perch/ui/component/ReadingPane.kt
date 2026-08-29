@@ -20,11 +20,11 @@ import javax.imageio.ImageIO
 // Basic HTML sanitizer to remove script tags, event handlers, and javascript: URLs
 fun sanitizeHtml(html: String): String {
     return html
-        .replace(Regex("<script.*?>.*?</script>"), "", RegexOption.IGNORE_CASE or RegexOption.DOT_MATCHES_ALL)
-        .replace(Regex("<.*?javascript:.*?>"), "", RegexOption.IGNORE_CASE)
+        .replace(Regex("<script.*?>.*?</script>", RegexOption.IGNORE_CASE), "")
+        .replace(Regex("<.*?javascript:.*?>", RegexOption.IGNORE_CASE), "")
         .replace(Regex("on\\w+=\"[^\"]*\""), "") // Remove event handlers like onclick
-        .replace(Regex("<iframe.*?>.*?</iframe>"), "", RegexOption.IGNORE_CASE or RegexOption.DOT_MATCHES_ALL)
-        .replace(Regex("<object.*?>.*?</object>"), "", RegexOption.IGNORE_CASE or RegexOption.DOT_MATCHES_ALL)
+        .replace(Regex("<iframe.*?>.*?</iframe>", RegexOption.IGNORE_CASE), "")
+        .replace(Regex("<object.*?>.*?</object>", RegexOption.IGNORE_CASE), "")
 }
 
 @Composable
