@@ -46,8 +46,16 @@ class ImapWatcher(
         store = session.getStore("imaps").apply {
             connect(accountConfig.imapHost, accountConfig.email, accessToken)
         }
-        folder = (store!!.getFolder("INBOX") as IMAPFolder).apply {
-            open(Folder.READ_WRITE)
+        folder = try {
+            (store!!.getFolder("INBOX") as IMAPFolder).apply {
+                if (!exists()) {
+                    error("INBOX folder does not exist")
+                }
+                open(Folder.READ_WRITE)
+            }
+        } catch (e: MessagingException) {
+            println("Failed to open INBOX folder: ${e.message}")
+            throw e
         }
         println("Connected to ${accountConfig.imapHost}:${accountConfig.imapPort}. Total messages: ${folder!!.messageCount}")
     }
