@@ -75,6 +75,11 @@ fun main() {
                 watcher.startIdleLoop()
             }.start()
         }
+        DisposableEffect(Unit) {
+            onDispose {
+                watcherRef?.stop()
+            }
+        }
 
         Window(
             onCloseRequest = { isWindowVisible.value = false },

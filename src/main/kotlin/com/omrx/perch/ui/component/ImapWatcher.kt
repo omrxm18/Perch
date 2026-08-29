@@ -110,7 +110,7 @@ class ImapWatcher(
             }
         }
         println("IDLE loop stopped after $maxRetries retries.")
-        isRunning = false // Ensure the loop stops completely
+        stop() // Ensure resources are cleaned up
     }
 
     fun stop() {
@@ -125,6 +125,7 @@ class ImapWatcher(
         } catch (e: Exception) {
             println("Error closing store: ${e.message}")
         }
+        println("IMAP watcher stopped.")
     }
 
     private fun toSummaries(messages: Array<Message>): List<MailSummary> {
