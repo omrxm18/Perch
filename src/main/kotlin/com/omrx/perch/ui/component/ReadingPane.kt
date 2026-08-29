@@ -3,6 +3,7 @@ package com.omrx.perch.ui.component
 import androidx.compose.foundation.Image
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.awt.SwingPanel
 import androidx.compose.ui.graphics.toComposeImageBitmap
@@ -15,6 +16,16 @@ import java.io.ByteArrayInputStream
 import java.net.URI
 import java.net.URLEncoder
 import javax.imageio.ImageIO
+
+// Basic HTML sanitizer to remove script tags, event handlers, and javascript: URLs
+fun sanitizeHtml(html: String): String {
+    return html
+        .replace(Regex("<script.*?>.*?</script>"), "", RegexOption.IGNORE_CASE or RegexOption.DOT_MATCHES_ALL)
+        .replace(Regex("<.*?javascript:.*?>"), "", RegexOption.IGNORE_CASE)
+        .replace(Regex("on\\w+=\"[^\"]*\""), "") // Remove event handlers like onclick
+        .replace(Regex("<iframe.*?>.*?</iframe>"), "", RegexOption.IGNORE_CASE or RegexOption.DOT_MATCHES_ALL)
+        .replace(Regex("<object.*?>.*?</object>"), "", RegexOption.IGNORE_CASE or RegexOption.DOT_MATCHES_ALL)
+}
 
 @Composable
 fun MailReadingPane(content: MailContent) {
@@ -33,8 +44,8 @@ fun MailReadingPane(content: MailContent) {
 
 @Composable
 private fun HtmlReadingPane(content: MailContent.Html) {
-    val browser = remember(content) {
-
+    val sanitizedHtml = remember(content.html) { sanitizeHtml(content.html) }
+    val browser = remember(sanitizedHtml) {
         val client = JcefBootstrap.newClient()
         client?.addRequestHandler(object : CefRequestHandlerAdapter() {
             override fun onBeforeBrowse(
@@ -49,9 +60,14 @@ private fun HtmlReadingPane(content: MailContent.Html) {
                 return false
             }
         })
-
-        val dataUrl = "data:text/html;charset=utf-8," + URLEncoder.encode(content.html, "UTF-8")
+        val dataUrl = "data:text/html;charset=utf-8," + URLEncoder.encode(sanitizedHtml, "UTF-8")
         client?.createBrowser(dataUrl, false, false)
+    }
+
+    DisposableEffect(browser) {
+        onDispose {
+            browser?.close(true)
+        }
     }
 
     browser?.let {
