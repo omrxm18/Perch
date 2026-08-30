@@ -141,7 +141,13 @@ private fun HtmlReadingPane(content: MailContent.Html) {
         tempFile.writeText(sanitizedHtml, Charsets.UTF_8)
         tempFile.deleteOnExit()
 
-        val createdBrowser = client?.createBrowser(tempFile.toURI().toString(), false, false)
+        // isOffscreenRendered = true: on Linux, JCEF's windowed (non-OSR) mode does not
+        // reliably paint at all — it's a documented gap, not a config mistake — and shows
+        // up exactly as a correctly-sized but solid black/blank rectangle.
+        // OSR renders into a buffer that JCEF composites via its own
+        // CefRenderPanel, which is still returned from getUIComponent() and still embeds
+        // fine in SwingPanel — no other code here needs to change.
+        val createdBrowser = client?.createBrowser(tempFile.toURI().toString(), true, false)
         createdBrowser to tempFile
     }
 
