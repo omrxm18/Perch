@@ -20,13 +20,6 @@ data class MailSummary(
     val isRead: Boolean
 )
 
-sealed class MailContent {
-    data class Html(val html: String) : MailContent()
-    data class PlainText(val text: String) : MailContent()
-    data class ImageOnly(val bytes: ByteArray, val mimeType: String) : MailContent()
-    object Empty : MailContent()
-}
-
 class ImapWatcher(
     private val accountConfig: AccountConfig,
     private val accessToken: String,

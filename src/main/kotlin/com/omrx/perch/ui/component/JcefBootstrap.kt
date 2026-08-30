@@ -5,7 +5,6 @@ import me.friwi.jcefmaven.EnumProgress
 import me.friwi.jcefmaven.MavenCefAppHandlerAdapter
 import org.cef.CefApp
 import org.cef.CefClient
-import org.cef.callback.CefSchemeRegistrar
 import java.io.File
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
@@ -16,8 +15,6 @@ object JcefBootstrap {
     @Volatile
     var isReady: Boolean = false
         private set
-
-    val currentInlineImages: MutableMap<String, ByteArray> = mutableMapOf()
 
     fun initialize(onProgress: (Float) -> Unit, onReady: () -> Unit) {
         if (isReady) {
@@ -37,13 +34,13 @@ object JcefBootstrap {
                         onProgress(percent)
                     }
                 }
-                builder.setAppHandler(object : MavenCefAppHandlerAdapter() {
-                    override fun onRegisterCustomSchemes(registrar: CefSchemeRegistrar?) {
-                        registrar?.addCustomScheme(
-                            "cid", false, true, false, true, false, false, false
-                        )
-                    }
-                })
+                // No custom scheme / scheme handler factory registration here anymore:
+                // that path crashed natively regardless of registration timing (a "CToCpp
+                // called with invalid version -1" fatal deep in CEF's marshaling layer).
+                // cid: images are now resolved by rewriting them to data: URIs in
+                // sanitizeHtml() before the browser ever navigates, so this class no
+                // longer needs to know about inline attachments at all.
+                builder.setAppHandler(object : MavenCefAppHandlerAdapter() {})
                 cefApp = builder.build()
                 isReady = true
                 onReady()
@@ -58,7 +55,6 @@ object JcefBootstrap {
             cefApp?.dispose()
             cefApp = null
             isReady = false
-            currentInlineImages.clear()
         }
     }
 }
