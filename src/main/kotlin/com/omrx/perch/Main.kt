@@ -22,7 +22,9 @@ import com.omrx.perch.ui.component.MailSummary
 import com.omrx.perch.ui.component.setupTray
 import com.omrx.perch.ui.component.updateUnreadCount
 import com.omrx.perch.util.AppError
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private val isWindowVisible = mutableStateOf(true)
@@ -135,9 +137,8 @@ fun main() {
                         isLoading = isInitializingAccounts,
                         onAddAccount = {
                             isInitializingAccounts = true
-                            // Launch in background coroutine
-                            LaunchedEffect(Unit) {
-                                withContext(Dispatchers.Default) {
+                            // Launch in background coroutine using CoroutineScope
+                                CoroutineScope(Dispatchers.Default).launch {
                                     try {
                                         val credential = getGmailCredential()
                                         credential.refreshToken()
@@ -170,8 +171,7 @@ fun main() {
                                         isInitializingAccounts = false
                                     }
                                 }
-                            }
-                        },
+                            },
                         onRemoveAccount = { id -> 
                             accounts = accounts.filter { it.id != id }
                             logger.info("Account removed: $id")
