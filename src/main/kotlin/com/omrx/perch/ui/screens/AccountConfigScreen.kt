@@ -10,10 +10,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.Button
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Divider
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
@@ -33,6 +35,7 @@ import com.omrx.perch.theme.PerchType
 @Composable
 fun AccountsScreen(
     accounts: List<AccountConfig>,
+    isLoading: Boolean = false,
     onAddAccount: () -> Unit,
     onRemoveAccount: (String) -> Unit,
     onBack: () -> Unit
@@ -44,7 +47,11 @@ fun AccountsScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text("Accounts", style = PerchType.subjectUnread.copy(fontSize = 22.sp))
-            Button(onClick = onAddAccount) {
+            Button(onClick = onAddAccount, enabled = !isLoading) {
+                if (isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                }
                 Icon(Icons.Default.Add, contentDescription = null)
                 Spacer(Modifier.width(4.dp))
                 Text("Add Account")
