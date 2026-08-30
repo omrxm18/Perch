@@ -50,6 +50,7 @@ import com.omrx.perch.ui.component.MailSummary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Date
+import com.omrx.perch.util.toRelativeTime
 
 @Composable
 fun PerchApp(
@@ -60,16 +61,25 @@ fun PerchApp(
     var selectedMail by remember { mutableStateOf<MailSummary?>(null) }
     var mailContent by remember { mutableStateOf<MailContent?>(null) }
     var isLoadingBody by remember { mutableStateOf(false) }
+    var loadError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(selectedMail?.uid) {
         val mail = selectedMail
         if (mail == null) {
             mailContent = null
+            loadError = null
             return@LaunchedEffect
         }
         isLoadingBody = true
-        mailContent = withContext(Dispatchers.IO) { fetchBody(mail.uid) }
-        isLoadingBody = false
+        loadError = null
+        mailContent = try {
+            withContext(Dispatchers.IO) { fetchBody(mail.uid) }
+        } catch (e: Exception) {
+            loadError = e.message ?: "Failed to load email content"
+            null
+        } finally {
+            isLoadingBody = false
+        }
     }
 
     Row(modifier = Modifier.fillMaxSize().background(PerchColors.bg)) {
@@ -98,13 +108,19 @@ fun PerchApp(
         Divider(modifier = Modifier.fillMaxHeight().width(1.dp), color = PerchColors.divider)
 
         Box(modifier = Modifier.width(340.dp).fillMaxHeight()) {
-            LazyColumn(contentPadding = PaddingValues(vertical = 4.dp)) {
-                items(mailList) { mail ->
-                    MailRow(
-                        mail = mail,
-                        selected = mail == selectedMail,
-                        onClick = { selectedMail = mail }
-                    )
+            if (mailList.isEmpty()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("No messages", style = PerchType.preview)
+                }
+            } else {
+                LazyColumn(contentPadding = PaddingValues(vertical = 4.dp)) {
+                    items(mailList, key = { it.uid }) { mail ->
+                        MailRow(
+                            mail = mail,
+                            selected = mail == selectedMail,
+                            onClick = { selectedMail = mail }
+                        )
+                    }
                 }
             }
         }
@@ -118,6 +134,13 @@ fun PerchApp(
                 }
                 isLoadingBody -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
+                }
+                loadError != null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Error loading message", style = PerchType.subjectUnread.copy(fontSize = 16.sp))
+                        Spacer(Modifier.height(8.dp))
+                        Text(loadError!!, style = PerchType.preview)
+                    }
                 }
                 else -> Column(modifier = Modifier.fillMaxSize()) {
                     Text(selectedMail!!.subject, style = PerchType.subjectUnread.copy(fontSize = 20.sp))
@@ -164,7 +187,7 @@ fun MailRow(mail: MailSummary, selected: Boolean, onClick: () -> Unit) {
         Column(modifier = Modifier.weight(1f)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Text(mail.from, style = PerchType.sender, maxLines = 1)
-                Text(relativeTime(mail.date), style = PerchType.timestamp)
+                Text(mail.date.toRelativeTime(), style = PerchType.timestamp)
             }
             Spacer(Modifier.height(2.dp))
             Text(
@@ -174,14 +197,5 @@ fun MailRow(mail: MailSummary, selected: Boolean, onClick: () -> Unit) {
                 overflow = TextOverflow.Ellipsis
             )
         }
-    }
-}
-
-fun relativeTime(date: Date): String {
-    val diffMin = (System.currentTimeMillis() - date.time) / 60000
-    return when {
-        diffMin < 60 -> "${diffMin}m"
-        diffMin < 1440 -> "${diffMin / 60}h"
-        else -> "${diffMin / 1440}d"
     }
 }
