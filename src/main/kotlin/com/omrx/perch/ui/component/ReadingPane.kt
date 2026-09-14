@@ -187,12 +187,12 @@ private fun HtmlReadingPane(content: MailContent.Html) {
 
     DisposableEffect(browser) {
         onDispose {
-            browser?.first?.close(true)
-            browser?.second?.delete()
+            browser.first?.close(true)
+            browser.second.delete()
         }
     }
 
-    val cefBrowser = browser?.first
+    val cefBrowser = browser.first
     if (cefBrowser == null) {
         // newClient()/createBrowser() failed even though jcefReady is true — a real
         // failure (missing natives, sandbox issue, etc.), not just a timing issue.

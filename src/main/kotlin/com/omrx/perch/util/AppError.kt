@@ -10,21 +10,6 @@ data class AppError(
 sealed class Result<T> {
     data class Success<T>(val data: T) : Result<T>()
     data class Error<T>(val error: AppError) : Result<T>()
-    class Loading<T> : Result<T>()
-
-    fun getOrNull(): T? = when (this) {
-        is Success -> data
-        else -> null
-    }
-
-    fun exceptionOrNull(): AppError? = when (this) {
-        is Error -> error
-        else -> null
-    }
-
-    fun isLoading(): Boolean = this is Loading
-    fun isSuccess(): Boolean = this is Success
-    fun isError(): Boolean = this is Error
 }
 
 suspend inline fun <T> tryAsync(

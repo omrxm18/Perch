@@ -1,7 +1,6 @@
 package com.omrx.perch.util
 
 import java.util.Date
-import java.text.SimpleDateFormat
 
 /**
  * Extension functions for common operations
@@ -15,23 +14,4 @@ fun Date.toRelativeTime(): String {
         diffMin < 1440 -> "${diffMin / 60}h"
         else -> "${diffMin / 1440}d"
     }
-}
-
-fun Date.toFormattedDate(): String {
-    val format = SimpleDateFormat("MMM d, yyyy")
-    return format.format(this)
-}
-
-fun String.truncate(maxLength: Int): String {
-    return if (this.length > maxLength) {
-        this.take(maxLength - 3) + "..."
-    } else {
-        this
-    }
-}
-
-fun <T> List<T>.paginate(page: Int, pageSize: Int): List<T> {
-    val start = page * pageSize
-    val end = minOf(start + pageSize, size)
-    return if (start >= size) emptyList() else subList(start, end)
 }

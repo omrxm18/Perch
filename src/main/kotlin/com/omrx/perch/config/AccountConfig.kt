@@ -1,8 +1,7 @@
 package com.omrx.perch.config
 
 enum class AccountType {
-    GMAIL,
-    GENERIC_IMAP
+    GMAIL
 }
 
 data class AccountConfig(

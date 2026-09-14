@@ -49,7 +49,6 @@ import com.omrx.perch.ui.component.MailReadingPane
 import com.omrx.perch.ui.component.MailSummary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.util.Date
 import com.omrx.perch.util.toRelativeTime
 
 @Composable

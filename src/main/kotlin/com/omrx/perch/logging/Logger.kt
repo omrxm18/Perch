@@ -32,9 +32,7 @@ class Logger(private val name: String) {
         val timestamp = LocalDateTime.now().format(dateFormat)
         val logMessage = "[$timestamp] [$level] [$name] $message"
         println(logMessage)
-        if (throwable != null) {
-            throwable.printStackTrace()
-        }
+        throwable?.printStackTrace()
     }
 
     companion object {

@@ -36,14 +36,4 @@ class AsyncJob<T>(
             }
         }
     }
-
-    fun cancel() {
-        currentJob?.cancel()
-        currentJob = null
-    }
-}
-
-@Composable
-fun <T> rememberAsyncJob(): AsyncJob<T> {
-    return remember { AsyncJob() }
 }

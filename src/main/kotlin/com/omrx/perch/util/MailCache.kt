@@ -21,10 +21,6 @@ class MailCache {
         summaries.forEach { cacheSummary(it) }
     }
 
-    fun getSummary(uid: Long): MailSummary? = summaryCache[uid]
-
-    fun getSummaries(): List<MailSummary> = summaryCache.values.sortedByDescending { it.date }
-
     fun cacheContent(uid: Long, content: MailContent) {
         if (content !is MailContent.Empty) {
             contentCache[uid] = content
@@ -33,21 +29,6 @@ class MailCache {
     }
 
     fun getContent(uid: Long): MailContent? = contentCache[uid]
-
-    fun updateSummary(uid: Long, updated: MailSummary) {
-        summaryCache[uid] = updated
-    }
-
-    fun removeSummary(uid: Long) {
-        summaryCache.remove(uid)
-        contentCache.remove(uid)
-    }
-
-    fun clear() {
-        logger.info("Clearing mail cache")
-        summaryCache.clear()
-        contentCache.clear()
-    }
 
     fun getStats(): String {
         return "MailCache: ${summaryCache.size} summaries, ${contentCache.size} content entries"
