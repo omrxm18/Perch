@@ -1,36 +1,26 @@
 package com.omrx.perch
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.*
 import com.omrx.perch.auth.getGmailCredential
 import com.omrx.perch.auth.getUserEmail
 import com.omrx.perch.config.AccountConfig
 import com.omrx.perch.config.AccountType
 import com.omrx.perch.logging.Logger
-import com.omrx.perch.ui.screens.AccountsScreen
-import com.omrx.perch.PerchApp
 import com.omrx.perch.ui.component.ErrorDialog
 import com.omrx.perch.ui.component.ImapWatcher
 import com.omrx.perch.ui.component.JcefBootstrap
-import com.omrx.perch.ui.component.MailContent
-import com.omrx.perch.ui.component.MailSummary
 import com.omrx.perch.ui.component.setupTray
 import com.omrx.perch.ui.component.updateUnreadCount
+import com.omrx.perch.ui.component.AppState
+import com.omrx.perch.ui.nav.NavHost
+import com.omrx.perch.ui.nav.Navigator
 import com.omrx.perch.util.AppError
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private val isWindowVisible = mutableStateOf(true)
 private val logger = Logger.get("Main")
-
-enum class Screen { Inbox, Accounts }
 
 fun main() {
     setupTray(
@@ -43,24 +33,18 @@ fun main() {
     )
 
     application {
-        var watcherRef by remember { mutableStateOf<ImapWatcher?>(null) }
         val windowState = rememberWindowState()
-        var browserReady by remember { mutableStateOf(false) }
-        var accounts by remember { mutableStateOf<List<AccountConfig>>(emptyList()) }
-        var currentScreen by remember { mutableStateOf(Screen.Inbox) }
-        var currentError by remember { mutableStateOf<AppError?>(null) }
-        var isInitializingAccounts by remember { mutableStateOf(false) }
-        val mailList = remember { mutableStateListOf<MailSummary>() }
-        val unreadCount by remember { derivedStateOf { mailList.count { !it.isRead } } }
+        val appState = remember { AppState() }
+        val navHost = remember { NavHost() }
 
-        LaunchedEffect(unreadCount) {
-            updateUnreadCount(unreadCount)
+        LaunchedEffect(appState.unreadCount) {
+            updateUnreadCount(appState.unreadCount)
         }
 
         LaunchedEffect(Unit) {
             JcefBootstrap.initialize(
                 onProgress = { },
-                onReady = { browserReady = true }
+                onReady = { appState.browserReady = true }
             )
             // Initialize primary Gmail account in background
             withContext(Dispatchers.Default) {
@@ -78,15 +62,15 @@ fun main() {
                     val watcher = ImapWatcher(
                         accountConfig = account,
                         accessToken = credential.accessToken,
-                        onNewMail = { newMessages -> mailList.addAll(0, newMessages) }
+                        onNewMail = { newMessages -> appState.mailList.addAll(0, newMessages) }
                     )
                     watcher.connect()
-                    watcherRef = watcher
-                    mailList.addAll(watcher.fetchRecentSummaries())
+                    appState.watcherRef = watcher
+                    appState.mailList.addAll(watcher.fetchRecentSummaries())
                     watcher.startIdleLoop()
                 } catch (e: Exception) {
                     logger.error("Failed to initialize account", e)
-                    currentError = AppError(
+                    appState.currentError = AppError(
                         title = "Failed to Connect",
                         message = e.message ?: "Unable to connect to Gmail",
                         throwable = e
@@ -94,9 +78,10 @@ fun main() {
                 }
             }
         }
+
         DisposableEffect(Unit) {
             onDispose {
-                watcherRef?.stop()
+                appState.watcherRef?.stop()
             }
         }
 
@@ -114,76 +99,14 @@ fun main() {
                 }
             }
 
-            if (!browserReady) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            } else {
-                when (currentScreen) {
-                    Screen.Inbox -> PerchApp(
-                        mailList,
-                        fetchBody = { uid ->
-                            val index = mailList.indexOfFirst { it.uid == uid }
-                            if (index >= 0) mailList[index] =
-                                mailList[index].copy(isRead = true)
-                            watcherRef?.markAsRead(uid)
-                            watcherRef?.fetchBody(uid) ?: MailContent.Empty
-                        },
-                        onOpenAccounts = { currentScreen = Screen.Accounts }
-                    )
-
-                    Screen.Accounts -> AccountsScreen(
-                        accounts = accounts,
-                        isLoading = isInitializingAccounts,
-                        onAddAccount = {
-                            isInitializingAccounts = true
-                            // Launch in background coroutine using CoroutineScope
-                                CoroutineScope(Dispatchers.Default).launch {
-                                    try {
-                                        val credential = getGmailCredential()
-                                        credential.refreshToken()
-                                        val email = getUserEmail(credential)
-                                        val newAccount = AccountConfig(
-                                            id = email,
-                                            displayName = email,
-                                            email = email,
-                                            type = AccountType.GMAIL,
-                                            imapHost = "imap.gmail.com"
-                                        )
-                                        if (!accounts.any { it.id == email }) {
-                                            accounts += newAccount
-                                            logger.info("Account added: $email")
-                                        } else {
-                                            currentError = AppError(
-                                                title = "Account Exists",
-                                                message = "This account is already configured",
-                                                recoverable = true
-                                            )
-                                        }
-                                    } catch (e: Exception) {
-                                        logger.error("Failed to add account", e)
-                                        currentError = AppError(
-                                            title = "Failed to Add Account",
-                                            message = e.message ?: "Unable to add account",
-                                            throwable = e
-                                        )
-                                    } finally {
-                                        isInitializingAccounts = false
-                                    }
-                                }
-                            },
-                        onRemoveAccount = { id -> 
-                            accounts = accounts.filter { it.id != id }
-                            logger.info("Account removed: $id")
-                        },
-                        onBack = { currentScreen = Screen.Inbox }
-                    )
-                }
-            }
-
             ErrorDialog(
-                error = currentError,
-                onDismiss = { currentError = null }
+                error = appState.currentError,
+                onDismiss = { appState.currentError = null }
+            )
+
+            Navigator(
+                appState = appState,
+                navHost = navHost
             )
         }
     }

@@ -48,7 +48,7 @@ import javax.imageio.ImageIO
 fun sanitizeHtml(html: String, allowRemoteImages: Boolean = false, inlineImages: Map<String, ByteArray> = emptyMap()): String {
     // relaxed() permits the common structural/formatting tags mail HTML relies on
     // (tables, spans, basic styling) while dropping <script>, event handlers,
-    // <iframe>, <object>, javascript: URLs, forms, etc. by default.
+    // <iframe>, <object>, JavaScript: URLs, forms, etc. by default.
     val safelist = Safelist.relaxed()
         .addTags("style") // inline <style> blocks are extremely common in mail HTML
         .addAttributes(":all", "style", "class")
