@@ -23,15 +23,11 @@ import kotlinx.coroutines.launch
 
 enum class Screen { Inbox, Accounts, Login, Settings }
 
+@Suppress("FunctionName")
 @Composable
 fun Navigator(appState: AppState, navHost: NavHost) {
     val logger = Logger.get("Navigator")
 
-    if (!appState.browserReady) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
-    } else {
         when (appState.currentScreen) {
             Screen.Inbox -> com.omrx.perch.PerchApp(
                 appState.mailList,
@@ -98,4 +94,3 @@ fun Navigator(appState: AppState, navHost: NavHost) {
             Screen.Login -> LoginScreen()
         }
     }
-}

@@ -1,6 +1,11 @@
 package com.omrx.perch
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.*
 import com.omrx.perch.auth.getGmailCredential
 import com.omrx.perch.auth.getUserEmail
@@ -43,7 +48,7 @@ fun main() {
 
         LaunchedEffect(Unit) {
             JcefBootstrap.initialize(
-                onProgress = { },
+                onProgress = { logger.info("JCEF initialization progress: $it%") },
                 onReady = { appState.browserReady = true }
             )
             // Initialize primary Gmail account in background
@@ -104,10 +109,16 @@ fun main() {
                 onDismiss = { appState.currentError = null }
             )
 
-            Navigator(
-                appState = appState,
-                navHost = navHost
-            )
+            if (!appState.browserReady) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                Navigator(
+                    appState = appState,
+                    navHost = navHost
+                )
+            }
         }
     }
 }
