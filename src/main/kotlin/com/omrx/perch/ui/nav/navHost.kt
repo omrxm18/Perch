@@ -14,6 +14,11 @@ class NavHost {
         }
     }
 
+    fun replaceAll(screen: Screen) {
+        navigateStack.clear()
+        navigateStack.add(screen)
+    }
+    
     fun popBackStack(): Boolean {
         return if (navigateStack.size > 1) {
             navigateStack.removeAt(navigateStack.lastIndex)

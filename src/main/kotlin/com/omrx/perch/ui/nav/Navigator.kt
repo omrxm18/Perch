@@ -1,11 +1,6 @@
 package com.omrx.perch.ui.nav
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import com.omrx.perch.auth.getGmailCredential
 import com.omrx.perch.auth.getUserEmail
 import com.omrx.perch.config.AccountConfig
@@ -91,6 +86,8 @@ fun Navigator(appState: AppState, navHost: NavHost) {
                 onAccounts = { navHost.push(Screen.Accounts) },
                 onBack = { navHost.popBackStack() },
             )
-            Screen.Login -> LoginScreen()
+            Screen.Login -> LoginScreen(
+                onSuccess = { navHost.replaceAll(Screen.Inbox) }
+            )
         }
     }

@@ -24,7 +24,7 @@ private val SCOPES = listOf(
     "https://www.googleapis.com/auth/userinfo.email"
 )
 private val JSON_FACTORY = GsonFactory.getDefaultInstance()
-private val TOKENS_DIR = File(System.getProperty("user.home"), ".perch/tokens")
+private val TOKENS_DIR = File(System.getProperty("user.home"), ".config/perch/StoredTokens")
 
 fun getGmailCredential(): Credential {
     logger.info("Retrieving Gmail credentials...")

@@ -20,9 +20,11 @@ import com.omrx.perch.ui.component.updateUnreadCount
 import com.omrx.perch.ui.component.AppState
 import com.omrx.perch.ui.nav.NavHost
 import com.omrx.perch.ui.nav.Navigator
+import com.omrx.perch.ui.screens.LoginScreen
 import com.omrx.perch.util.AppError
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
 
 private val isWindowVisible = mutableStateOf(true)
 private val logger = Logger.get("Main")
@@ -41,6 +43,8 @@ fun main() {
         val windowState = rememberWindowState()
         val appState = remember { AppState() }
         val navHost = remember { NavHost() }
+        val tokenFile = File(System.getProperty("user.home"), ".config/perch/StoredTokens/StoredCredential")
+        var loggedIn by remember { mutableStateOf(tokenFile.isFile && tokenFile.length() > 0) }
 
         LaunchedEffect(appState.unreadCount) {
             updateUnreadCount(appState.unreadCount)
@@ -51,8 +55,13 @@ fun main() {
                 onProgress = { logger.info("JCEF initialization progress: $it%") },
                 onReady = { appState.browserReady = true }
             )
+        }
+
+        LaunchedEffect(loggedIn) {
+            if (!loggedIn) return@LaunchedEffect
+
             // Initialize primary Gmail account in background
-            withContext(Dispatchers.Default) {
+            withContext(Dispatchers.IO) {
                 try {
                     val credential = getGmailCredential()
                     credential.refreshToken()
@@ -103,22 +112,24 @@ fun main() {
                     window.requestFocus()
                 }
             }
+            when {
+                !loggedIn -> LoginScreen(onSuccess = { loggedIn = true })
+                !appState.browserReady -> Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+                else -> Navigator(
+                    appState = appState,
+                    navHost = navHost
+                )
+            }
 
             ErrorDialog(
                 error = appState.currentError,
                 onDismiss = { appState.currentError = null }
             )
-
-            if (!appState.browserReady) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            } else {
-                Navigator(
-                    appState = appState,
-                    navHost = navHost
-                )
-            }
         }
     }
 }
