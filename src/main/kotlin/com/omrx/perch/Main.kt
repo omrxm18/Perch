@@ -6,6 +6,8 @@ import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.*
 import com.omrx.perch.auth.getGmailCredential
 import com.omrx.perch.auth.getUserEmail
@@ -40,7 +42,10 @@ fun main() {
     )
 
     application {
-        val windowState = rememberWindowState()
+        val windowState = rememberWindowState(
+            size = DpSize(1100.dp, 750.dp),
+            position = WindowPosition(Alignment.Center)
+        )
         val appState = remember { AppState() }
         val navHost = remember { NavHost() }
         val tokenFile = File(System.getProperty("user.home"), ".config/perch/StoredTokens/StoredCredential")
@@ -106,6 +111,7 @@ fun main() {
             title = "Perch"
         ) {
             LaunchedEffect(isWindowVisible.value) {
+                window.minimumSize = java.awt.Dimension(800, 500)
                 if (isWindowVisible.value) {
                     windowState.isMinimized = false
                     window.toFront()

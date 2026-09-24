@@ -23,7 +23,7 @@ enum class Screen { Inbox, Accounts, Login, Settings }
 fun Navigator(appState: AppState, navHost: NavHost) {
     val logger = Logger.get("Navigator")
 
-        when (appState.currentScreen) {
+        when (navHost.currentScreen) {
             Screen.Inbox -> com.omrx.perch.PerchApp(
                 appState.mailList,
                 fetchBody = { uid ->
